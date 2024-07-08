@@ -4,7 +4,6 @@ import type { RenovateConfig } from '../../config/types';
 import { logger } from '../../logger';
 import type { PackageFile } from '../../modules/manager/types';
 import { platform } from '../../modules/platform';
-import { GitHubMaxPrBodyLen } from '../../modules/platform/github';
 import { regEx } from '../../util/regex';
 import { coerceString } from '../../util/string';
 import * as template from '../../util/template';
@@ -232,17 +231,19 @@ export async function ensureDependencyDashboard(
     { packageFiles },
     'Checking packageFiles for deprecated packages',
   );
-  for (const [manager, fileNames] of Object.entries(packageFiles)) {
-    for (const fileName of fileNames) {
-      for (const dep of fileName.deps) {
-        const name = dep.packageName ?? dep.depName;
-        const hasReplacement = !!dep.updates?.find(
-          (updates) => updates.updateType === 'replacement',
-        );
-        if (name && (dep.deprecationMessage ?? hasReplacement)) {
-          hasDeprecations = true;
-          deprecatedPackages[manager] ??= {};
-          deprecatedPackages[manager][name] ??= hasReplacement;
+  if (is.nonEmptyObject(packageFiles)) {
+    for (const [manager, fileNames] of Object.entries(packageFiles)) {
+      for (const fileName of fileNames) {
+        for (const dep of fileName.deps) {
+          const name = dep.packageName ?? dep.depName;
+          const hasReplacement = !!dep.updates?.find(
+            (updates) => updates.updateType === 'replacement',
+          );
+          if (name && (dep.deprecationMessage ?? hasReplacement)) {
+            hasDeprecations = true;
+            deprecatedPackages[manager] ??= {};
+            deprecatedPackages[manager][name] ??= hasReplacement;
+          }
         }
       }
     }
@@ -466,7 +467,7 @@ export async function ensureDependencyDashboard(
   // fit the detected dependencies section
   const footer = getFooter(config);
   issueBody += PackageFiles.getDashboardMarkdown(
-    GitHubMaxPrBodyLen - issueBody.length - footer.length,
+    platform.maxBodyLength() - issueBody.length - footer.length,
   );
 
   issueBody += footer;
